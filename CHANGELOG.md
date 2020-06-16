@@ -1,8 +1,16 @@
 # Changelog
 
-## [Unreleased](https://github.com/jadack-msft/NuGetForUnity-Package/tree/HEAD)
+## [1.1.0](https://github.com/jadack-msft/NuGetForUnity-Package/tree/1.1.0) (2020-06-16)
 
-[Full Changelog](https://github.com/jadack-msft/NuGetForUnity-Package/compare/1.0.0...HEAD)
+[Full Changelog](https://github.com/jadack-msft/NuGetForUnity-Package/compare/1.0.1...1.1.0)
+
+**Merged pull requests:**
+
+- Removing dependeny on DotNetZip for ZipStorer replacement [\#3](https://github.com/jadack-msft/NuGetForUnity-Package/pull/3) ([jadack-msft](https://github.com/jadack-msft))
+
+## [1.0.1](https://github.com/jadack-msft/NuGetForUnity-Package/tree/1.0.1) (2020-06-10)
+
+[Full Changelog](https://github.com/jadack-msft/NuGetForUnity-Package/compare/1.0.0...1.0.1)
 
 **Merged pull requests:**
 
