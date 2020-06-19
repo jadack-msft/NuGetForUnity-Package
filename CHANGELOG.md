@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/jadack-msft/NuGetForUnity-Package/tree/1.1.1) (2020-06-19)
+
+[Full Changelog](https://github.com/jadack-msft/NuGetForUnity-Package/compare/1.1.0...1.1.1)
+
+**Merged pull requests:**
+
+- Added support for lib/native libraries [\#4](https://github.com/jadack-msft/NuGetForUnity-Package/pull/4) ([jadack-msft](https://github.com/jadack-msft))
+
 ## [1.1.0](https://github.com/jadack-msft/NuGetForUnity-Package/tree/1.1.0) (2020-06-16)
 
 [Full Changelog](https://github.com/jadack-msft/NuGetForUnity-Package/compare/1.0.1...1.1.0)
