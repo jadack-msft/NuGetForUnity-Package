@@ -463,9 +463,92 @@
             // Leaving it results in "assembly loading" and "multiple pre-compiled assemblies with same name" errors
             DeleteDirectory(packageInstallDirectory + "/ref");
 
-            if (Directory.Exists(packageInstallDirectory + "/lib"))
+            // Look at native libraries
+            string nativeLibRoot = packageInstallDirectory + "/lib/native";
+            if (Directory.Exists(nativeLibRoot))
             {
                 List<string> selectedDirectories = new List<string>();
+
+                string[] validDirectories = { "amd64/release", "x86/release" };
+                BuildTarget[] buildTargets = { BuildTarget.StandaloneWindows64, BuildTarget.StandaloneWindows };
+                string[] properties = { "CPU/X64", "", "CPU/X86" };
+
+                for (int i = 0; i < validDirectories.Length; i++)
+                {
+                    string directory = validDirectories[i];
+                    string directoryPath = Path.Combine(nativeLibRoot, directory);
+
+                    if (Directory.Exists(directoryPath))
+                    {
+                        selectedDirectories.Add(directoryPath);
+
+                        string[] dlls = Directory.GetFiles(directoryPath, "*.dll", SearchOption.AllDirectories);
+
+                        foreach (string dll in dlls)
+                        {
+                            // Get the relative dll path for getting the AssetImporter
+                            DirectoryInfo rootFolder = Directory.GetParent(Application.dataPath);
+                            string dllPath = dll.Substring(rootFolder.FullName.Length + 1);
+
+                            LogVerbose($"Found dll at path {dllPath}");
+
+                            AssetDatabase.ImportAsset(dllPath);
+                            PluginImporter dllImporter = (PluginImporter)AssetImporter.GetAtPath(dllPath);
+
+                            if (dllImporter != null)
+                            {
+                                BuildTarget target = buildTargets[i];
+
+                                dllImporter.SetCompatibleWithAnyPlatform(false);
+                                dllImporter.SetCompatibleWithPlatform(target, true);
+
+                                if (target == BuildTarget.StandaloneWindows64)
+                                {
+                                    dllImporter.SetCompatibleWithEditor(true);
+                                }
+
+                                if (!string.IsNullOrEmpty(properties[i]))
+                                {
+                                    string key = properties[i].Split('/')[0];
+                                    string value = properties[i].Split('/')[1];
+
+                                    dllImporter.SetPlatformData(target, key, value);
+                                }
+
+                                dllImporter.SaveAndReimport();
+                            }
+                        }
+                    }
+                }
+
+                foreach (string directory in selectedDirectories)
+                {
+                    LogVerbose("Using {0}", directory);
+                }
+
+                IEnumerable<string> nativeDirectories = Directory.GetDirectories(nativeLibRoot, "*", SearchOption.AllDirectories).Select(s => new DirectoryInfo(s)).Select(x => x.FullName.ToLower());
+                // delete all of the libaries except for the selected one(s)
+                foreach (string directory in nativeDirectories)
+                {
+                    bool validDirectory = selectedDirectories
+                        .Where(d =>
+                        {
+                            string normalizedPath = Path.GetFullPath(d).ToLower();
+                            return normalizedPath.Contains(directory.ToLower());
+                        })
+                        .Any();
+
+                    if (!validDirectory)
+                    {
+                        DeleteDirectory(directory);
+                    }
+                }
+            }
+
+            if (Directory.Exists(packageInstallDirectory + "/lib"))
+            {
+                // Don't delete any of the native libs that were just processed
+                List<string> selectedDirectories = new List<string>() { nativeLibRoot };
 
                 // go through the library folders in descending order (highest to lowest version)
                 IEnumerable<DirectoryInfo> libDirectories = Directory.GetDirectories(packageInstallDirectory + "/lib").Select(s => new DirectoryInfo(s));
@@ -556,7 +639,7 @@
                 foreach (DirectoryInfo directory in libDirectories)
                 {
                     bool validDirectory = selectedDirectories
-                        .Where(d => string.Compare(d, directory.FullName, ignoreCase: true) == 0)
+                        .Where(d => string.Compare(Path.GetFullPath(d), directory.FullName, StringComparison.InvariantCultureIgnoreCase) == 0)
                         .Any();
 
                     if (!validDirectory)
