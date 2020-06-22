@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.2](https://github.com/jadack-msft/NuGetForUnity-Package/tree/1.1.2) (2020-06-22)
+
+[Full Changelog](https://github.com/jadack-msft/NuGetForUnity-Package/compare/1.1.1...1.1.2)
+
+**Merged pull requests:**
+
+- 1.1.2 [\#5](https://github.com/jadack-msft/NuGetForUnity-Package/pull/5) ([jadack-msft](https://github.com/jadack-msft))
+
 ## [1.1.1](https://github.com/jadack-msft/NuGetForUnity-Package/tree/1.1.1) (2020-06-19)
 
 [Full Changelog](https://github.com/jadack-msft/NuGetForUnity-Package/compare/1.1.0...1.1.1)
