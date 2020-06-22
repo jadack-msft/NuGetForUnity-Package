@@ -388,7 +388,7 @@
 
                 string runtimesRoot = Path.Combine(packageInstallDirectory, "runtimes");
 
-                for(int i = 0; i < validDirectories.Length; i++)
+                for (int i = 0; i < validDirectories.Length; i++)
                 {
                     string directory = validDirectories[i];
                     string directoryPath = Path.Combine(runtimesRoot, directory);
@@ -406,31 +406,7 @@
 
                             LogVerbose($"Found dll at path {dllPath}");
 
-                            AssetDatabase.ImportAsset(dllPath);
-                            PluginImporter dllImporter = (PluginImporter)AssetImporter.GetAtPath(dllPath);
-
-                            if (dllImporter != null)
-                            {
-                                BuildTarget target = buildTargets[i];
-
-                                dllImporter.SetCompatibleWithAnyPlatform(false);
-                                dllImporter.SetCompatibleWithPlatform(target, true);
-
-                                if(target == BuildTarget.StandaloneWindows64)
-                                {
-                                    dllImporter.SetCompatibleWithEditor(true);
-                                }
-
-                                if(!string.IsNullOrEmpty(properties[i]))
-                                {
-                                    string key = properties[i].Split('/')[0];
-                                    string value = properties[i].Split('/')[1];
-
-                                    dllImporter.SetPlatformData(target, key, value);
-                                }
-
-                                dllImporter.SaveAndReimport();
-                            }
+                            ImportDLL(dllPath, buildTargets[i], new Tuple<string, string>[] { new Tuple<string, string>(properties[i].Split('/')[0], properties[i].Split('/')[1]) });
                         }
                     }
                 }
@@ -471,7 +447,7 @@
 
                 string[] validDirectories = { "amd64/release", "x86/release" };
                 BuildTarget[] buildTargets = { BuildTarget.StandaloneWindows64, BuildTarget.StandaloneWindows };
-                string[] properties = { "CPU/X64", "", "CPU/X86" };
+                string[] properties = { "CPU/X64", "CPU/X86" };
 
                 for (int i = 0; i < validDirectories.Length; i++)
                 {
@@ -492,31 +468,7 @@
 
                             LogVerbose($"Found dll at path {dllPath}");
 
-                            AssetDatabase.ImportAsset(dllPath);
-                            PluginImporter dllImporter = (PluginImporter)AssetImporter.GetAtPath(dllPath);
-
-                            if (dllImporter != null)
-                            {
-                                BuildTarget target = buildTargets[i];
-
-                                dllImporter.SetCompatibleWithAnyPlatform(false);
-                                dllImporter.SetCompatibleWithPlatform(target, true);
-
-                                if (target == BuildTarget.StandaloneWindows64)
-                                {
-                                    dllImporter.SetCompatibleWithEditor(true);
-                                }
-
-                                if (!string.IsNullOrEmpty(properties[i]))
-                                {
-                                    string key = properties[i].Split('/')[0];
-                                    string value = properties[i].Split('/')[1];
-
-                                    dllImporter.SetPlatformData(target, key, value);
-                                }
-
-                                dllImporter.SaveAndReimport();
-                            }
+                            ImportDLL(dllPath, buildTargets[i], new Tuple<string, string>[] { new Tuple<string, string>(properties[i].Split('/')[0], properties[i].Split('/')[1]) });
                         }
                     }
                 }
@@ -597,33 +549,22 @@
 
                             LogVerbose($"Found dll at path {dllPath}");
 
-                            AssetDatabase.ImportAsset(dllPath);
-                            var dllImporter = AssetImporter.GetAtPath(dllPath);
+                            BuildTarget target = BuildTarget.NoTarget;
 
-                            if (dllImporter != null)
+                            switch (platform.Platform)
                             {
-                                BuildTarget target = BuildTarget.NoTarget;
-
-                                switch (platform.Platform)
-                                {
-                                    case BuildTargetGroup.WSA:
-                                        target = BuildTarget.WSAPlayer;
-                                        break;
-                                    case BuildTargetGroup.Android:
-                                        target = BuildTarget.Android;
-                                        break;
-                                    case BuildTargetGroup.iOS:
-                                        target = BuildTarget.iOS;
-                                        break;
-                                }
-
-                                if (target != BuildTarget.NoTarget)
-                                {
-                                    (dllImporter as PluginImporter).SetCompatibleWithAnyPlatform(false);
-                                    (dllImporter as PluginImporter).SetCompatibleWithPlatform(target, true);
-                                    dllImporter.SaveAndReimport();
-                                }
+                                case BuildTargetGroup.WSA:
+                                    target = BuildTarget.WSAPlayer;
+                                    break;
+                                case BuildTargetGroup.Android:
+                                    target = BuildTarget.Android;
+                                    break;
+                                case BuildTargetGroup.iOS:
+                                    target = BuildTarget.iOS;
+                                    break;
                             }
+
+                            ImportDLL(dllPath, target);
                         }
                     }
 
@@ -753,6 +694,36 @@
             }
         }
 
+        private static void ImportDLL(string dllPath, BuildTarget buildTarget, Tuple<string, string>[] properties = null)
+        {
+            AssetDatabase.ImportAsset(dllPath);
+            var importer = AssetImporter.GetAtPath(dllPath);
+
+            if (importer == null)
+            {
+                return;
+            }
+
+            PluginImporter dllImporter = importer as PluginImporter;
+
+            if (buildTarget != BuildTarget.NoTarget)
+            {
+                dllImporter.SetCompatibleWithAnyPlatform(false);
+                dllImporter.SetCompatibleWithEditor(buildTarget == BuildTarget.StandaloneWindows64);
+                dllImporter.SetCompatibleWithPlatform(buildTarget, true);
+
+                if (properties != null)
+                {
+                    for (int i = 0; i < properties.Length; i++)
+                    {
+                        dllImporter.SetPlatformData(buildTarget, properties[i].Item1, properties[i].Item2);
+                    }
+                }
+            }
+
+            dllImporter.SaveAndReimport();
+        }
+
         public static NugetFrameworkGroup GetBestDependencyFrameworkGroupForCurrentSettings(NugetPackage package)
         {
             var targetFrameworks = package.Dependencies
@@ -851,7 +822,7 @@
             // Look for matches in the target framework options
             string bestFramework = null;
 
-            foreach(string supportedLibrary in platform.LibraryNames)
+            foreach (string supportedLibrary in platform.LibraryNames)
             {
                 var matches = targetFrameworks.Where(libFolder => Regex.Match(libFolder, supportedLibrary).Success);
 
@@ -1523,7 +1494,7 @@
                     string baseDirectory = Path.Combine(NugetConfigFile.RepositoryPath, string.Format("{0}.{1}", package.Id, package.Version));
 
                     // unzip the package
-                    using(ZipStorer zip = ZipStorer.Open(cachedPackagePath, FileAccess.Read))
+                    using (ZipStorer zip = ZipStorer.Open(cachedPackagePath, FileAccess.Read))
                     {
                         List<ZipStorer.ZipFileEntry> dir = zip.ReadCentralDir();
                         foreach (ZipStorer.ZipFileEntry entry in dir)
@@ -1789,7 +1760,7 @@
 
             UnityWebRequest request = UnityWebRequest.Get(url);
             request.SendWebRequest();
-            
+
             while (!request.isDone)
             {
                 if (stopwatch.ElapsedMilliseconds >= 750)
@@ -1812,7 +1783,7 @@
                 {
                     result = new Texture2D(32, 32);
                     ImageConversion.LoadImage(result, request.downloadHandler.data);
-                    
+
                     LogVerbose("Downloading image {0} took {1} ms", url, stopwatch.ElapsedMilliseconds);
                 }
                 else
@@ -1916,10 +1887,10 @@
                     }
 
                     // Unzip the bundle and extract any credential provider exes
-                    using(ZipStorer zip = ZipStorer.Open(tempFileName, FileAccess.Read))
+                    using (ZipStorer zip = ZipStorer.Open(tempFileName, FileAccess.Read))
                     {
                         List<ZipStorer.ZipFileEntry> dir = zip.ReadCentralDir();
-                        foreach(ZipStorer.ZipFileEntry entry in dir)
+                        foreach (ZipStorer.ZipFileEntry entry in dir)
                         {
                             if (Regex.IsMatch(entry.FilenameInZip, @"^credentialprovider.+\.exe$", RegexOptions.IgnoreCase))
                             {
