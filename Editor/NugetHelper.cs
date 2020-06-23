@@ -384,7 +384,7 @@
                 // Otherwise, everything else will hit a conflict upon importing
                 string[] validDirectories = { "win-x64/nativeassets/uap", "win-x86/native", "win-x86/nativeassets/uap", "win10-arm/nativeassets/uap", "win10-arm64/nativeassets/uap", "win-x64/native" };
                 BuildTarget[] buildTargets = { BuildTarget.WSAPlayer, BuildTarget.StandaloneWindows, BuildTarget.WSAPlayer, BuildTarget.WSAPlayer, BuildTarget.WSAPlayer, BuildTarget.StandaloneWindows64 };
-                string[] properties = { "CPU/X64", "", "CPU/X86", "CPU/ARM", "CPU/ARM64", "" };
+                string[] properties = { "CPU/X64", "CPU/X86", "CPU/X86", "CPU/ARM", "CPU/ARM64", "CPU/X64" };
 
                 string runtimesRoot = Path.Combine(packageInstallDirectory, "runtimes");
 
