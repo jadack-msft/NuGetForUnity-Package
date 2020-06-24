@@ -373,6 +373,45 @@
             // For now, delete src.  We may use it later...
             DeleteDirectory(packageInstallDirectory + "/src");
 
+            Dictionary<string, List<PluginImporter>> unityPlugins = new Dictionary<string, List<PluginImporter>>();
+
+            // Check for a Unity folder
+            if (Directory.Exists(packageInstallDirectory + "/unity"))
+            {
+                // Weird edge case with some existing plugins -
+                // With the additions of supporting differnet platforms, some libraries are being imported twice
+                // when they have a base Unity folder.
+                // For now, keep track of the libraries in the Unity folder and just make sure we do not re-import them
+                // from other library or runtime folders.
+                string unityPath = Path.Combine(packageInstallDirectory, "unity");
+                string[] dlls = Directory.GetFiles(unityPath, "*.dll", SearchOption.AllDirectories);
+
+                foreach (string dll in dlls)
+                {
+                    DirectoryInfo rootFolder = Directory.GetParent(Application.dataPath);
+                    string dllPath = dll.Substring(rootFolder.FullName.Length + 1);
+
+                    AssetDatabase.ImportAsset(dllPath);
+                    var importer = AssetImporter.GetAtPath(dllPath);
+
+                    if (importer == null)
+                    {
+                        return;
+                    }
+
+                    PluginImporter dllImporter = importer as PluginImporter;
+
+                    string dllName = Path.GetFileName(dll);
+
+                    if (!unityPlugins.ContainsKey(dllName))
+                    {
+                        unityPlugins.Add(dllName, new List<PluginImporter>());
+                    }
+
+                    unityPlugins[dllName].Add(dllImporter);
+                }
+            }
+
             // Import any runtime dlls
             if (Directory.Exists(packageInstallDirectory + "/runtimes"))
             {
@@ -382,9 +421,23 @@
 
                 // Make sure to import the library we want to set for the editor last
                 // Otherwise, everything else will hit a conflict upon importing
-                string[] validDirectories = { "win-x64/nativeassets/uap", "win-x86/native", "win-x86/nativeassets/uap", "win10-arm/nativeassets/uap", "win10-arm64/nativeassets/uap", "win-x64/native" };
-                BuildTarget[] buildTargets = { BuildTarget.WSAPlayer, BuildTarget.StandaloneWindows, BuildTarget.WSAPlayer, BuildTarget.WSAPlayer, BuildTarget.WSAPlayer, BuildTarget.StandaloneWindows64 };
-                string[] properties = { "CPU/X64", "CPU/X86", "CPU/X86", "CPU/ARM", "CPU/ARM64", "CPU/X64" };
+                string[] validDirectories = {
+                    "win10-x64", "win-x64",
+                    "win10-x86", "win-x86",
+                    "win10-arm", "win10-arm64"
+                };
+
+                BuildTarget[] buildTargets = {
+                    BuildTarget.StandaloneWindows64, BuildTarget.StandaloneWindows64,
+                    BuildTarget.StandaloneWindows, BuildTarget.StandaloneWindows,
+                    BuildTarget.WSAPlayer, BuildTarget.WSAPlayer
+                };
+
+                string[] properties = {
+                    "CPU/X64", "CPU/X64",
+                    "CPU/X86", "CPU/X86",
+                    "CPU/ARM", "CPU/ARM64"
+                };
 
                 string runtimesRoot = Path.Combine(packageInstallDirectory, "runtimes");
 
@@ -406,6 +459,18 @@
 
                             LogVerbose($"Found dll at path {dllPath}");
 
+                            string dllFileName = Path.GetFileName(dll);
+
+                            if (unityPlugins.ContainsKey(dllFileName))
+                            {
+                                if (unityPlugins[dllFileName].Count(x => x.GetCompatibleWithPlatform(buildTargets[i])) > 0)
+                                {
+                                    // Remove this library
+                                    File.Delete(dll);
+                                    continue;
+                                }
+                            }
+
                             ImportDLL(dllPath, buildTargets[i], new Tuple<string, string>[] { new Tuple<string, string>(properties[i].Split('/')[0], properties[i].Split('/')[1]) });
                         }
                     }
@@ -416,12 +481,10 @@
                     LogVerbose("Using {0}", directory);
                 }
 
-                string[] ValidBaseDirectories = { "win-x64", "win-x86", "win10-arm" };
-
                 // delete all of the libaries except for the selected one
                 foreach (string directory in runtimeDirectories)
                 {
-                    bool validDirectory = ValidBaseDirectories
+                    bool validDirectory = validDirectories
                         .Where(d => directory.Contains(d))
                         .Any();
 
@@ -467,6 +530,18 @@
                             string dllPath = dll.Substring(rootFolder.FullName.Length + 1);
 
                             LogVerbose($"Found dll at path {dllPath}");
+
+                            string dllFileName = Path.GetFileName(dll);
+
+                            if (unityPlugins.ContainsKey(dllFileName))
+                            {
+                                if (unityPlugins[dllFileName].Count(x => x.GetCompatibleWithPlatform(buildTargets[i])) > 0)
+                                {
+                                    // Remove this library
+                                    File.Delete(dll);
+                                    continue;
+                                }
+                            }
 
                             ImportDLL(dllPath, buildTargets[i], new Tuple<string, string>[] { new Tuple<string, string>(properties[i].Split('/')[0], properties[i].Split('/')[1]) });
                         }
@@ -538,6 +613,11 @@
 
                     foreach (var directory in newDirectories)
                     {
+                        if (!Directory.Exists(directory))
+                        {
+                            continue;
+                        }
+
                         // Flag any DLLs as being for this platform
                         string[] dlls = Directory.GetFiles(directory, "*.dll", SearchOption.AllDirectories);
 
@@ -564,11 +644,23 @@
                                     break;
                             }
 
+                            string dllFileName = Path.GetFileName(dll);
+
+                            if (unityPlugins.ContainsKey(dllFileName))
+                            {
+                                if (unityPlugins[dllFileName].Count(x => x.GetCompatibleWithPlatform(target)) > 0)
+                                {
+                                    // Skip this library
+                                    File.Delete(dllPath);
+                                    continue;
+                                }
+                            }
+
                             ImportDLL(dllPath, target);
                         }
-                    }
 
-                    selectedDirectories.AddRange(newDirectories);
+                        selectedDirectories.Add(directory);
+                    }
                 }
 
                 foreach (string directory in selectedDirectories)
