@@ -1,5 +1,21 @@
 # Changelog
 
+## [Unreleased](https://github.com/jadack-msft/NuGetForUnity-Package/tree/HEAD)
+
+[Full Changelog](https://github.com/jadack-msft/NuGetForUnity-Package/compare/1.1.3...HEAD)
+
+**Merged pull requests:**
+
+- 1.1.4 [\#7](https://github.com/jadack-msft/NuGetForUnity-Package/pull/7) ([jadack-msft](https://github.com/jadack-msft))
+
+## [1.1.3](https://github.com/jadack-msft/NuGetForUnity-Package/tree/1.1.3) (2020-06-23)
+
+[Full Changelog](https://github.com/jadack-msft/NuGetForUnity-Package/compare/1.1.2...1.1.3)
+
+**Merged pull requests:**
+
+- Fix bug when import libraries from runtimes folder [\#6](https://github.com/jadack-msft/NuGetForUnity-Package/pull/6) ([jadack-msft](https://github.com/jadack-msft))
+
 ## [1.1.2](https://github.com/jadack-msft/NuGetForUnity-Package/tree/1.1.2) (2020-06-22)
 
 [Full Changelog](https://github.com/jadack-msft/NuGetForUnity-Package/compare/1.1.1...1.1.2)
