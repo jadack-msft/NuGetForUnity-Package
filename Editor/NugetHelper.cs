@@ -425,7 +425,7 @@
                     "win10-x64/native", "win-x64/native",
                     "win10-x86", "win-x86",
                     "win10-arm", "win10-arm64",
-                    "win10-x64/nativeassets", "win-x64/nativeassets",
+                    "win10-x64/nativeassets/uap", "win-x64/nativeassets/uap",
                 };
 
                 BuildTarget[] buildTargets = {
@@ -484,10 +484,16 @@
                     LogVerbose("Using {0}", directory);
                 }
 
+                string[] validParentDirectories = {
+                    "win10-x64", "win-x64",
+                    "win10-x86", "win-x86",
+                    "win10-arm", "win10-arm64",
+                };
+
                 // delete all of the libaries except for the selected one
                 foreach (string directory in runtimeDirectories)
                 {
-                    bool validDirectory = validDirectories
+                    bool validDirectory = validParentDirectories
                         .Where(d => directory.Contains(d))
                         .Any();
 
