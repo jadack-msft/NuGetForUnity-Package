@@ -422,21 +422,24 @@
                 // Make sure to import the library we want to set for the editor last
                 // Otherwise, everything else will hit a conflict upon importing
                 string[] validDirectories = {
-                    "win10-x64", "win-x64",
+                    "win10-x64/native", "win-x64/native",
                     "win10-x86", "win-x86",
-                    "win10-arm", "win10-arm64"
+                    "win10-arm", "win10-arm64",
+                    "win10-x64/nativeassets", "win-x64/nativeassets",
                 };
 
                 BuildTarget[] buildTargets = {
                     BuildTarget.StandaloneWindows64, BuildTarget.StandaloneWindows64,
                     BuildTarget.StandaloneWindows, BuildTarget.StandaloneWindows,
-                    BuildTarget.WSAPlayer, BuildTarget.WSAPlayer
+                    BuildTarget.WSAPlayer, BuildTarget.WSAPlayer,
+                    BuildTarget.WSAPlayer, BuildTarget.WSAPlayer,
                 };
 
                 string[] properties = {
                     "CPU/X64", "CPU/X64",
                     "CPU/X86", "CPU/X86",
-                    "CPU/ARM", "CPU/ARM64"
+                    "CPU/ARM", "CPU/ARM64",
+                    "CPU/X64", "CPU/X64",
                 };
 
                 string runtimesRoot = Path.Combine(packageInstallDirectory, "runtimes");
