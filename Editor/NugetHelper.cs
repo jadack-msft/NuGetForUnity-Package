@@ -425,6 +425,7 @@
                     "win10-x64/native", "win-x64/native",
                     "win10-x86", "win-x86",
                     "win10-arm", "win10-arm64",
+                    "win10-x86/nativeassets/uap", "win-x86/nativeassets/uap",
                     "win10-x64/nativeassets/uap", "win-x64/nativeassets/uap",
                 };
 
@@ -433,12 +434,14 @@
                     BuildTarget.StandaloneWindows, BuildTarget.StandaloneWindows,
                     BuildTarget.WSAPlayer, BuildTarget.WSAPlayer,
                     BuildTarget.WSAPlayer, BuildTarget.WSAPlayer,
+                    BuildTarget.WSAPlayer, BuildTarget.WSAPlayer,
                 };
 
                 string[] properties = {
                     "CPU/X64", "CPU/X64",
                     "CPU/X86", "CPU/X86",
                     "CPU/ARM", "CPU/ARM64",
+                    "CPU/X86", "CPU/X86",
                     "CPU/X64", "CPU/X64",
                 };
 
