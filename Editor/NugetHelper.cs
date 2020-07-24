@@ -477,7 +477,7 @@
                                 }
                             }
 
-                            ImportDLL(dllPath, buildTargets[i], new Tuple<string, string>[] { new Tuple<string, string>(properties[i].Split('/')[0], properties[i].Split('/')[1]) });
+                            ImportDLL(dllPath, buildTargets[i], new Tuple<string, string>(properties[i].Split('/')[0], properties[i].Split('/')[1]));
                         }
                     }
                 }
@@ -555,7 +555,7 @@
                                 }
                             }
 
-                            ImportDLL(dllPath, buildTargets[i], new Tuple<string, string>[] { new Tuple<string, string>(properties[i].Split('/')[0], properties[i].Split('/')[1]) });
+                            ImportDLL(dllPath, buildTargets[i], new Tuple<string, string>(properties[i].Split('/')[0], properties[i].Split('/')[1]));
                         }
                     }
                 }
@@ -798,34 +798,22 @@
             }
         }
 
-        private static void ImportDLL(string dllPath, BuildTarget buildTarget, Tuple<string, string>[] properties = null)
+        private static void ImportDLL(string dllPath, BuildTarget buildTarget)
         {
+            ImportDLL(dllPath, buildTarget, new Tuple<string, string>(string.Empty, string.Empty));
+        }
+
+        private static void ImportDLL(string dllPath, BuildTarget buildTarget, Tuple<string, string> property)
+        {
+            // The import path only contains forward slashes
+            string importPath = dllPath.Replace('\\', '/');
+
+            // Use the Editor prefs for storing import data for the plugin path
+            // A class defined below listens for imports and changes settings before it is processed.
+            // This prevents dll files from clashing when importing with the same settings.
+            EditorPrefs.SetString(importPath, string.Format("{0},{1},{2}", buildTarget, property.Item1, property.Item2));
+
             AssetDatabase.ImportAsset(dllPath);
-            var importer = AssetImporter.GetAtPath(dllPath);
-
-            if (importer == null)
-            {
-                return;
-            }
-
-            PluginImporter dllImporter = importer as PluginImporter;
-
-            if (buildTarget != BuildTarget.NoTarget)
-            {
-                dllImporter.SetCompatibleWithAnyPlatform(false);
-                dllImporter.SetCompatibleWithEditor(buildTarget == BuildTarget.StandaloneWindows64);
-                dllImporter.SetCompatibleWithPlatform(buildTarget, true);
-
-                if (properties != null)
-                {
-                    for (int i = 0; i < properties.Length; i++)
-                    {
-                        dllImporter.SetPlatformData(buildTarget, properties[i].Item1, properties[i].Item2);
-                    }
-                }
-            }
-
-            dllImporter.SaveAndReimport();
         }
 
         public static NugetFrameworkGroup GetBestDependencyFrameworkGroupForCurrentSettings(NugetPackage package)
@@ -2147,6 +2135,45 @@
             }
 
             return null;
+        }
+
+        // Class used for listening to imports
+        private class ProcessImportAsset : AssetPostprocessor
+        {
+            void OnPreprocessAsset()
+            {
+                if (assetImporter is PluginImporter)
+                {
+                    PluginImporter plugin = assetImporter as PluginImporter;
+
+                    // See if we stored any data with specific plugin settings
+                    if (!EditorPrefs.HasKey(plugin.assetPath))
+                    {
+                        return;
+                    }
+
+                    // Read the settings, it is stored in a comma separated string with:
+                    // "BuildTarget,PropertyName,PropertyValue"
+                    string[] data = EditorPrefs.GetString(plugin.assetPath).Split(',');
+
+                    // Clean up
+                    EditorPrefs.DeleteKey(plugin.assetPath);
+
+                    BuildTarget buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), data[0], true);
+
+                    if (buildTarget != BuildTarget.NoTarget)
+                    {
+                        plugin.SetCompatibleWithAnyPlatform(false);
+                        plugin.SetCompatibleWithEditor(buildTarget == BuildTarget.StandaloneWindows64);
+                        plugin.SetCompatibleWithPlatform(buildTarget, true);
+
+                        if (!string.IsNullOrEmpty(data[1]))
+                        {
+                            plugin.SetPlatformData(buildTarget, data[1], data[2]);
+                        }
+                    }
+                }
+            }
         }
     }
 }
