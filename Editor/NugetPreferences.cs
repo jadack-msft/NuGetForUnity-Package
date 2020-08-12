@@ -21,7 +21,10 @@
         /// <summary>
         /// Draws the preferences GUI inside the Unity preferences window in the Editor.
         /// </summary>
+        #pragma warning disable CS0618
         [PreferenceItem("NuGet For Unity")]
+        #pragma warning restore CS0618
+
         public static void PreferencesGUI()
         {
             bool preferencesChangedThisFrame = false;

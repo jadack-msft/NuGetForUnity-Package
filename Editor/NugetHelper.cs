@@ -373,42 +373,14 @@
             // For now, delete src.  We may use it later...
             DeleteDirectory(packageInstallDirectory + "/src");
 
-            Dictionary<string, List<PluginImporter>> unityPlugins = new Dictionary<string, List<PluginImporter>>();
-
-            // Check for a Unity folder
+            // If a Unity directory exists, remove any runtime files if they exist
+            // This package has been setup to work within Unity.
             if (Directory.Exists(packageInstallDirectory + "/unity"))
             {
-                // Weird edge case with some existing plugins -
-                // With the additions of supporting differnet platforms, some libraries are being imported twice
-                // when they have a base Unity folder.
-                // For now, keep track of the libraries in the Unity folder and just make sure we do not re-import them
-                // from other library or runtime folders.
-                string unityPath = Path.Combine(packageInstallDirectory, "unity");
-                string[] dlls = Directory.GetFiles(unityPath, "*.dll", SearchOption.AllDirectories);
-
-                foreach (string dll in dlls)
+                // Delete runtime files
+                if (Directory.Exists(packageInstallDirectory + "/runtimes"))
                 {
-                    DirectoryInfo rootFolder = Directory.GetParent(Application.dataPath);
-                    string dllPath = dll.Substring(rootFolder.FullName.Length + 1);
-
-                    AssetDatabase.ImportAsset(dllPath);
-                    var importer = AssetImporter.GetAtPath(dllPath);
-
-                    if (importer == null)
-                    {
-                        return;
-                    }
-
-                    PluginImporter dllImporter = importer as PluginImporter;
-
-                    string dllName = Path.GetFileName(dll);
-
-                    if (!unityPlugins.ContainsKey(dllName))
-                    {
-                        unityPlugins.Add(dllName, new List<PluginImporter>());
-                    }
-
-                    unityPlugins[dllName].Add(dllImporter);
+                    Directory.Delete(packageInstallDirectory + "/runtimes", true);
                 }
             }
 
@@ -466,16 +438,6 @@
                             LogVerbose($"Found dll at path {dllPath}");
 
                             string dllFileName = Path.GetFileName(dll);
-
-                            if (unityPlugins.ContainsKey(dllFileName))
-                            {
-                                if (unityPlugins[dllFileName].Count(x => x.GetCompatibleWithPlatform(buildTargets[i])) > 0)
-                                {
-                                    // Remove this library
-                                    File.Delete(dll);
-                                    continue;
-                                }
-                            }
 
                             ImportDLL(dllPath, buildTargets[i], new Tuple<string, string>(properties[i].Split('/')[0], properties[i].Split('/')[1]));
                         }
@@ -545,16 +507,6 @@
 
                             string dllFileName = Path.GetFileName(dll);
 
-                            if (unityPlugins.ContainsKey(dllFileName))
-                            {
-                                if (unityPlugins[dllFileName].Count(x => x.GetCompatibleWithPlatform(buildTargets[i])) > 0)
-                                {
-                                    // Remove this library
-                                    File.Delete(dll);
-                                    continue;
-                                }
-                            }
-
                             ImportDLL(dllPath, buildTargets[i], new Tuple<string, string>(properties[i].Split('/')[0], properties[i].Split('/')[1]));
                         }
                     }
@@ -594,84 +546,81 @@
                 var targetFrameworks = libDirectories
                     .Select(x => x.Name.ToLower());
 
-                foreach (var platform in NugetConfigFile.SupportedPlatforms)
+                if (Directory.Exists(packageInstallDirectory + "/lib/unity"))
                 {
-                    string bestTargetFramework = TryGetBestFramework(targetFrameworks, platform);
-                    List<string> newDirectories = new List<string>();
-
-                    if (bestTargetFramework != null)
+                    selectedDirectories.Add(packageInstallDirectory + "/lib/unity");
+                }
+                else
+                {
+                    foreach (var platform in NugetConfigFile.SupportedPlatforms)
                     {
-                        IEnumerable<DirectoryInfo> matches = libDirectories.Where(x => x.Name.ToLower() == bestTargetFramework);
+                        string bestTargetFramework = TryGetBestFramework(targetFrameworks, platform);
+                        List<string> newDirectories = new List<string>();
 
-                        if (matches.Count() > 0)
+                        if (bestTargetFramework != null)
                         {
-                            DirectoryInfo bestLibDirectory = matches.First();
+                            IEnumerable<DirectoryInfo> matches = libDirectories.Where(x => x.Name.ToLower() == bestTargetFramework);
 
-                            if (bestTargetFramework == "unity" ||
-                                bestTargetFramework == "net35-unity full v3.5" ||
-                                bestTargetFramework == "net35-unity subset v3.5")
+                            if (matches.Count() > 0)
                             {
-                                newDirectories.Add(Path.Combine(bestLibDirectory.Parent.FullName, "unity"));
-                                newDirectories.Add(Path.Combine(bestLibDirectory.Parent.FullName, "net35-unity full v3.5"));
-                                newDirectories.Add(Path.Combine(bestLibDirectory.Parent.FullName, "net35-unity subset v3.5"));
-                            }
-                            else
-                            {
-                                newDirectories.Add(bestLibDirectory.FullName);
-                            }
-                        }
-                    }
+                                DirectoryInfo bestLibDirectory = matches.First();
 
-
-                    foreach (var directory in newDirectories)
-                    {
-                        if (!Directory.Exists(directory))
-                        {
-                            continue;
-                        }
-
-                        // Flag any DLLs as being for this platform
-                        string[] dlls = Directory.GetFiles(directory, "*.dll", SearchOption.AllDirectories);
-
-                        foreach (string dll in dlls)
-                        {
-                            // Get the relative dll path for getting the AssetImporter
-                            DirectoryInfo rootFolder = Directory.GetParent(Application.dataPath);
-                            string dllPath = dll.Substring(rootFolder.FullName.Length + 1);
-
-                            LogVerbose($"Found dll at path {dllPath}");
-
-                            BuildTarget target = BuildTarget.NoTarget;
-
-                            switch (platform.Platform)
-                            {
-                                case BuildTargetGroup.WSA:
-                                    target = BuildTarget.WSAPlayer;
-                                    break;
-                                case BuildTargetGroup.Android:
-                                    target = BuildTarget.Android;
-                                    break;
-                                case BuildTargetGroup.iOS:
-                                    target = BuildTarget.iOS;
-                                    break;
-                            }
-
-                            string dllFileName = Path.GetFileName(dll);
-
-                            if (unityPlugins.ContainsKey(dllFileName))
-                            {
-                                if (unityPlugins[dllFileName].Count(x => x.GetCompatibleWithPlatform(target)) > 0)
+                                if (bestTargetFramework == "unity" ||
+                                    bestTargetFramework == "net35-unity full v3.5" ||
+                                    bestTargetFramework == "net35-unity subset v3.5")
                                 {
-                                    // Skip this library
-                                    File.Delete(dllPath);
-                                    continue;
+                                    newDirectories.Add(Path.Combine(bestLibDirectory.Parent.FullName, "unity"));
+                                    newDirectories.Add(Path.Combine(bestLibDirectory.Parent.FullName, "net35-unity full v3.5"));
+                                    newDirectories.Add(Path.Combine(bestLibDirectory.Parent.FullName, "net35-unity subset v3.5"));
+                                }
+                                else
+                                {
+                                    newDirectories.Add(bestLibDirectory.FullName);
                                 }
                             }
-
-                            ImportDLL(dllPath, target);
                         }
 
-                        selectedDirectories.Add(directory);
+
+                        foreach (var directory in newDirectories)
+                        {
+                            if (!Directory.Exists(directory))
+                            {
+                                continue;
+                            }
+
+                            // Flag any DLLs as being for this platform
+                            string[] dlls = Directory.GetFiles(directory, "*.dll", SearchOption.AllDirectories);
+
+                            foreach (string dll in dlls)
+                            {
+                                // Get the relative dll path for getting the AssetImporter
+                                DirectoryInfo rootFolder = Directory.GetParent(Application.dataPath);
+                                string dllPath = dll.Substring(rootFolder.FullName.Length + 1);
+
+                                LogVerbose($"Found dll at path {dllPath}");
+
+                                BuildTarget target = BuildTarget.NoTarget;
+
+                                switch (platform.Platform)
+                                {
+                                    case BuildTargetGroup.WSA:
+                                        target = BuildTarget.WSAPlayer;
+                                        break;
+                                    case BuildTargetGroup.Android:
+                                        target = BuildTarget.Android;
+                                        break;
+                                    case BuildTargetGroup.iOS:
+                                        target = BuildTarget.iOS;
+                                        break;
+                                }
+
+                                string dllFileName = Path.GetFileName(dll);
+
+                                ImportDLL(dllPath, target);
+                            }
+
+                            selectedDirectories.Add(directory);
+                        }
                     }
                 }
 
@@ -885,8 +834,9 @@
             }
         }
 
+#pragma warning disable CS0649
         private struct PriorityFramework { public int Priority; public string Framework; }
-
+#pragma warning restore CS0649
 
         public static string TryGetBestTargetFrameworkForCurrentSettings(IEnumerable<string> targetFrameworks)
         {
@@ -1934,8 +1884,10 @@
         [System.Serializable]
         private struct CredentialProviderResponse
         {
+#pragma warning disable CS0649  
             public string Username;
             public string Password;
+#pragma warning restore CS0649  
         }
 
         /// <summary>
